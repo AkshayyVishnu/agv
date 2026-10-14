@@ -1,0 +1,26 @@
+[submodule "f1tenth_gym"]
+	path = f1tenth_gym
+	url = https://github.com/f1tenth/f1tenth_gym.git
+[submodule "f1tenth_racetracks"]
+	path = f1tenth_racetracks
+	url = https://github.com/f1tenth/f1tenth_racetracks.git
+[submodule "f1tenth_gym_ros"]
+	path = f1tenth_gym_ros
+	url = https://github.com/f1tenth/f1tenth_gym_ros.git
+	branch = dev-humble
+[submodule "turing-track-ros2"]
+	path = turing-track-ros2
+	url = https://github.com/adp-sudo/turing-track-ros2.git
+[submodule "ldlidar_stl_ros2"]
+	path = ldlidar_stl_ros2
+	url = https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+[submodule "race_stack"]
+	path = race_stack
+	url = https://github.com/ForzaETH/race_stack.git
+	branch = ros2-humble
+[submodule "f1tenth_ws"]
+	path = f1tenth_ws
+	url = https://github.com/CL2-UWaterloo/f1tenth_ws.git
+[submodule "global_racetrajectory_optimization"]
+	path = global_racetrajectory_optimization
+	url = https://github.com/TUMFTM/global_racetrajectory_optimization.git

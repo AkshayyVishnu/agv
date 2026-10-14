@@ -1,0 +1,18 @@
+# Expert (hand-written driver) settings. Tune here, never in code. Reasons: docs/DECISIONS.md D-31..D-41.
+disparity:
+  half_width: 0.22
+  disp_thresh: 0.35
+  fov_deg: 120.0        # D-41: hairpin exits lie beyond 90 deg
+  steer_max: 0.4
+  v_min: 0.6
+  v_max: 3.0            # no 1.5 m/s cap; the gate's clamp still applies on the car
+  stop_dist: 0.5
+  turn_slowdown: 0.75   # tuned 2026-10-11 (D-37)
+  seam_period: 0.1
+  seam_margin: 0.15
+  side_deg: [60.0, 100.0]
+  side_clear: 0.45
+  bubble_width: 0.35   # safety bubble (D-36), tuned 2026-10-11 (D-37)
+  brake_decel: 4.0
+  latency: 0.15
+  yaw_comp_dt: 0.15     # D-40: scan-age compensation (s), = expected scan age

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=45"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "turing_ml"
+version = "0.0.1"
+description = "Turing Track ML team: sensor model, experts, gym harness, policies"
+requires-python = ">=3.8"
+# numpy is pinned by f110_gym (<=1.22.0) in the team container; we only need >=1.18 APIs.
+dependencies = ["numpy>=1.18", "pyyaml>=5.3"]
+
+[tool.setuptools]
+packages = ["turing_ml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
