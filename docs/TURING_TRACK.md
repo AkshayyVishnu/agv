@@ -16,7 +16,7 @@ On Windows use PowerShell. On Linux, replace `$env:X="y";` with `X=y`.
 | | Reactive driver (disparity extender) | **Pure pursuit on a racing line** (new) |
 |---|---|---|
 | Needs | LiDAR scan only | the car's **pose on the map** + a prebuilt racing line |
-| On TuringTrack | **0/10 laps**: crashes at the bottom-left hairpin | **laps in ~18 s**, mean 3.2 m/s, top 5 m/s |
+| On TuringTrack | **10/10 laps, ~58–60 s**, with `--set stop_dist=0.25 --set side_clear=0.25` (D-47) | **laps in ~18 s**, mean 3.2 m/s, top 5 m/s |
 | Files | `turing_ml/experts.py`, `configs/expert.yaml` | `turing_ml/raceline.py`, `turing_ml/pursuit.py`, `configs/raceline.yaml` |
 
 It works in two steps:
@@ -61,7 +61,13 @@ python scripts/drive_live.py --map maps/TuringTrack/TuringTrack_map.yaml --start
 ```
 
 Expected: `laps 2`, lap times about `[18.05, 17.77]`, mean speed 3.24 m/s, max 5.00. The green dots are
-the racing line. For comparison, the reactive driver: drop `--driver pursuit`.
+the racing line. For comparison, the reactive LiDAR-only driver (needs the two narrow-track settings, D-47):
+
+```powershell
+python scripts/drive_live.py --map maps/TuringTrack/TuringTrack_map.yaml --start 0.875 -4.225 0 --set stop_dist=0.25 --set side_clear=0.25 --laps 2 --max-time 150 --realtime
+```
+
+If you get `ModuleNotFoundError: gym`, the venv isn't active: run `..\.venv-main\Scripts\Activate.ps1` first (the prompt shows `(.venv-main)`, `python --version` says 3.10).
 
 ### 2.2 Make it realistic: late, noisy pose
 
@@ -165,7 +171,8 @@ To try a different value, add a preset (the scripts' `--set` changes driver sett
 | D-43 | Laps counted at a real start line | the gym counted false laps on our small track. **All TuringTrack lap times before this were wrong** |
 | D-44 | `lidar_dist` per vehicle | the gym centres the collision box on the LiDAR; with the default the SBK10's simulated nose was 0.2 m too far forward |
 | D-45 | `sbk10` preset; collision box rebuilt per env | the gym built the car's footprint once per process |
-| D-46 | Racing line + pure pursuit | the reactive driver can't get round the hairpin |
+| D-46 | Racing line + pure pursuit | 3× faster than the reactive driver; uses the map |
+| D-47 | Reactive driver: `stop_dist=0.25 side_clear=0.25`, keep `bubble_width` 0.35 | a 0.2 bubble made it hug the inside of the hairpin and crash; defaults stop it at the first corner |
 
 Details and evidence: [`turing-ml/docs/DECISIONS.md`](../turing-ml/docs/DECISIONS.md).
 

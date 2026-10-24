@@ -465,7 +465,7 @@ applies. It starts from the manual's extender. Every change from the manual is l
 - **Why:** gym main toggles a "lap" whenever the car enters or leaves a band ~4.6 m wide × 0.6 m deep
   around the start (`f110_env._check_done`). On our 14 × 10 m track the middle straight (y ≈ −2.25)
   runs through that band: a "26 s lap" was 23.9 m of a ~56 m lap. **Every TuringTrack lap time before
-  this fix was wrong**; the reactive driver in fact never completes a lap there (D-46).
+  this fix was wrong**. For the reactive driver's real result see D-47.
 - **Evidence:** ring lap-time test still passes (15.7 s expected per lap). F1 tracks have nothing else
   within 2 m of the start, so their results are not expected to change; not re-run.
 
@@ -506,11 +506,26 @@ applies. It starts from the manual's extender. Every change from the manual is l
   - **pose prediction:** a late pose is rolled forward by its age with the current speed and yaw rate.
 - **Results:** perfect pose 18.05 / 17.77 s (2 laps). Pose late + 3 cm noise, 10 seeds:
   0.05 s → 10/10 (18 s); 0.10 s → 8/10 full speed, 10/10 at 0.8× (22 s); 0.15 s → 0/10 full, 8/10 at 0.8×.
-  Without prediction 0.10 s → 0/10 even at 0.7×. The reactive driver: 0/10 at 3.0 and 1.5 m/s, always
-  at the bottom-left hairpin, whose centre line (0.53 m) is tighter than the car's 0.62 m turning circle.
+  Without prediction 0.10 s → 0/10 even at 0.7×. The reactive driver with `bubble_width=0.2` crashed 0/10
+  at the bottom-left hairpin; that was a setting, not a limit of the car (D-47).
 - **Assumptions:** race direction **ccw** (drawing doesn't say); steering lock 24° (not published). The
   hairpin's racing line is 0.57 m at margin 0.20, below the 0.62 m circle: the car uses part of the margin.
 - **Not on the car yet:** needs localization (particle filter) delivering a pose within ~0.1 s.
+
+### D-47 · Reactive driver on TuringTrack: `stop_dist=0.25`, `side_clear=0.25`, bubble stays 0.35
+- **What:** on our 1 m track run the disparity extender with `--set stop_dist=0.25 --set side_clear=0.25`;
+  everything else from `expert.yaml` (bubble_width 0.35). `expert.yaml` itself is unchanged (F1-track tuning).
+- **Why:** the hairpin end has 2.0 m of room; a full-lock U-turn needs 1.49 m (2 × 0.65 m at the driver's
+  `steer_max` 0.4, plus 0.25 m body). It fits only if the turn starts from the outer ~0.6 m of the 0.95 m
+  lower leg. The bubble keeps the aim point that far from the inside corner (spur tip). With bubble 0.2 the
+  car approached at y ≈ −2.05, turned in at y = −1.95 (the feasibility edge) and clipped the outer wall at
+  0.17 m/s: geometry, not speed. Default `stop_dist` 0.5 stops it for good at the first corner; default
+  `side_clear` 0.45 (nearly half the track) blocks steering into bends.
+- **Evidence (TuringTrack, sbk10, seeds 0–4 × nominal/harsh):** defaults + both settings 10/10, 58–60 s;
+  `stop_dist` only 0/10; bubble 0.2 0/10 at v_max 1.5 and 3.0; 0.3 7/10; 0.4 10/10; 0.5 0/10 (too wide for
+  1 m). Raising the car's `s_max` alone changed nothing (the driver caps at `steer_max` 0.4).
+- **Reopen if:** it needs to be robust rather than tuned: the working bubble range is only ~0.3–0.45 m.
+  Next step: a full-lock-arc check against the scan that steers wide before a sharp opening.
 
 ---
 

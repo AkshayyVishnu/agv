@@ -53,7 +53,8 @@ file counted false laps and are withdrawn):
 
 | Driver | Result |
 |---|---|
-| Reactive disparity extender, `v_max` 3.0 or 1.5 | **0/10**: always crashes at the bottom-left hairpin (centre line 0.53 m radius, tighter than the car's 0.62 m turning circle) |
+| Reactive disparity extender, `--set stop_dist=0.25 --set side_clear=0.25` | **10/10** (5 seeds × nominal/harsh), 58–60 s (D-47) |
+| Reactive, same but `bubble_width=0.2` | 0/10: hugs the inside of the bottom-left hairpin and hits its outer wall |
 | Pure pursuit on the racing line, perfect pose | 2/2 laps, **18.05 / 17.77 s**, mean 3.24 m/s, max 5.0 |
 | Pure pursuit, pose 0.05 s late + 3 cm noise | 10/10, 18 s |
 | Pure pursuit, pose 0.10 s late + 3 cm noise | 8/10 at full speed, 10/10 at `--speed-scale 0.8` (22 s) |

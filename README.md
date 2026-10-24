@@ -12,7 +12,7 @@ race tracks and reference stacks are pinned as git submodules next to it.
 - **Our track (TuringTrack), our car (SBK10) and the pure-pursuit driver, plus how to try it on your own track/car:**
   see [`docs/TURING_TRACK.md`](docs/TURING_TRACK.md).
 - **Car parameters and what each one does:** see [`docs/CAR_PARAMETERS.md`](docs/CAR_PARAMETERS.md).
-- **Why each design choice was made (D-01…D-46):** see [`turing-ml/docs/DECISIONS.md`](turing-ml/docs/DECISIONS.md).
+- **Why each design choice was made (D-01…D-47):** see [`turing-ml/docs/DECISIONS.md`](turing-ml/docs/DECISIONS.md).
 
 ---
 
@@ -23,7 +23,7 @@ race tracks and reference stacks are pinned as git submodules next to it.
 | **D500 LiDAR model.** Turns the gym's perfect scan into what the real `ldlidar` driver publishes: 10 Hz rotation with motion skew, 50–190 ms latency, range noise, dropouts, dark-wall bursts, mixed pixels, over-the-wall and pitch events, NaN = no return, angles 0…2π | `turing_ml/d500.py`, `configs/sensor.yaml` | ✅ 25 tests, checked against the gym (scan age within 5 ms of the design value) |
 | **`TuringEnv`.** Wraps `f1tenth_gym` (main) to behave like the car: 100 Hz physics, 20 Hz control, sensing only through the D500 model, one observation dict | `turing_ml/env.py` | ✅ 11 tests, ~140× real time |
 | **`to_grid`.** Any scan → 271 ranges on a 1° grid (−135°…+135°), capped at 4 m, with NaN treated as unknown | `turing_ml/sensor.py` | ✅ (placeholder for Person A's version, includes the NaN fix) |
-| **Disparity-extender driver.** Reactive, LiDAR-only. Adds scan-age (yaw) compensation, a seam rule, a safety bubble, side clearance and a stopping-distance speed cap | `turing_ml/experts.py`, `configs/expert.yaml` | ✅ **48/48 laps** on 8 F1 tracks (stock car, before D-42..D-44); **0/10 on TuringTrack** (hairpin) |
+| **Disparity-extender driver.** Reactive, LiDAR-only. Adds scan-age (yaw) compensation, a seam rule, a safety bubble, side clearance and a stopping-distance speed cap | `turing_ml/experts.py`, `configs/expert.yaml` | ✅ **48/48 laps** on 8 F1 tracks (stock car, before D-42..D-44); **10/10 on TuringTrack** with `stop_dist=0.25 side_clear=0.25` (~59 s) |
 | **Racing line + pure pursuit.** Minimum-curvature line and speed profile built from the map; pure pursuit with late-pose prediction | `turing_ml/raceline.py`, `turing_ml/pursuit.py`, `scripts/make_raceline.py`, `configs/raceline.yaml` | ✅ TuringTrack laps in ~18 s; 10/10 with pose 0.1 s late at 0.8× speed |
 | **Vehicle presets** (`sbk10` = our Rlaarlo SBK10, default; `f1tenth_default`) | `configs/vehicle.yaml`, `turing_ml/vehicle.py` | ✅ some values estimated, see [CAR_PARAMETERS](docs/CAR_PARAMETERS.md) |
 | **TuringTrack map** from the CAD drawing | `maps/TuringTrack/`, `scripts/drawing_to_map.py` | ✅ direction assumed ccw |
