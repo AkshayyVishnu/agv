@@ -441,6 +441,76 @@ applies. It starts from the manual's extender. Every change from the manual is l
   result and lap time with and without it, so the change only acts in hairpins. Part of the final 54/54 and 48/48 results.
 - **Rejected:** a creep-and-turn recovery when stopped. It is more code, and it drives with a wall 0.5 m ahead.
 - **Reopen if:** the car picks a sideways opening on a wide-open section (none seen on 8 maps).
+- **Note (2026-10-24):** the "steer dithered between −0.4 and 0" symptom was the one-beam bug fixed in D-42.
+
+---
+
+## Our car, our track, map-based driver: 2026-10-24
+
+### D-42 · A one-beam opening is a valid heading (bug fix in `disparity_extender`)
+- **What:** the widest near-max run now starts as `None`; any run, even one beam wide, can win.
+- **Why:** the loop started from `best = (ZERO, ZERO)` and only replaced it with a run wider than one
+  beam (`i - 1 - start > 0`). When only one padded beam was the farthest, the driver steered **straight
+  ahead** and, with no turn slowdown, accelerated. On 2.2 m tracks many beams tie at the 4 m cap, so it
+  rarely showed. On our 1.0 m track the opening into a bend is often one beam: steer flipped +0.4 / 0
+  every step and the car drove into the wall at 0.7 m/s (traced at t = 23.45 s, TuringTrack harsh s0).
+- **Evidence:** `test_one_beam_opening_is_followed_not_ignored` fails 3/3 on the old code. The old
+  `test_bubble_widens_the_line…` only passed because of the bug (the bubble-on case went straight into
+  the bend); it now compares the chosen heading with steering uncapped (0.37 m vs 0.30 m clearance).
+- **Not re-run:** the 8-track table after the fix.
+
+### D-43 · Laps are counted at a real start line, not by gym main
+- **What:** `TuringEnv` counts a lap when the pose crosses the line through the start pose, perpendicular
+  to the start heading, within ±1.5 m (`START_LINE_HALF`), going forward, after ≥ 5 m (`MIN_LAP_DIST`).
+- **Why:** gym main toggles a "lap" whenever the car enters or leaves a band ~4.6 m wide × 0.6 m deep
+  around the start (`f110_env._check_done`). On our 14 × 10 m track the middle straight (y ≈ −2.25)
+  runs through that band: a "26 s lap" was 23.9 m of a ~56 m lap. **Every TuringTrack lap time before
+  this fix was wrong**; the reactive driver in fact never completes a lap there (D-46).
+- **Evidence:** ring lap-time test still passes (15.7 s expected per lap). F1 tracks have nothing else
+  within 2 m of the start, so their results are not expected to change; not re-run.
+
+### D-44 · LiDAR position (and so the collision box) comes from the vehicle preset
+- **What:** `configs/vehicle.yaml` has `lidar_dist`; the scripts pass it to `TuringEnv`.
+  `f1tenth_default` keeps 0.275 m, `sbk10` uses **0.05 m (estimate, mount not measured)**.
+- **Why:** gym main centres its wall-collision box (width × wheelbase) on the LiDAR. With 0.275 m on the
+  SBK10 the box covered 0.28–0.55 m ahead of the rear axle; the real body is about −0.06 to +0.34 m.
+  The simulated nose was ~0.2 m too far forward and clipped the outside of every tight bend.
+- **Evidence:** pure pursuit, margin 0.12, 0.8 × speed: crash at the hairpin with 0.275, two full laps
+  (21.0 / 20.7 s) with 0.05. The box length is still the wheelbase (0.275 m), shorter than the real
+  0.40 m body: a gym limitation.
+- **Reopen when:** the D500 mount is known. Set `lidar_dist` = mount position ahead of the CoG.
+
+### D-45 · Vehicle preset `sbk10` (Rlaarlo Storm Breaker SBK10, metal) is the default
+- **What:** `configs/vehicle.yaml`, every value tagged [spec] / [meas] / [est] / [default] with its
+  source in the repo's `docs/CAR_PARAMETERS.md` §0. Wheelbase 0.275, width 0.25, length 0.40, gym v_max
+  12.5 (measured 28 mph); mass, inertia, CoG height estimated; steering lock, servo speed, grip and
+  braking **not published**, gym defaults kept.
+- **Also:** `TuringEnv` resets gym main's class-level collision footprint before each env (it is built
+  for the first car in a process only), checked by switching default → sbk10 → default in one process.
+
+### D-46 · Map-based driver: minimum-curvature racing line + pure pursuit
+- **What:** `scripts/make_raceline.py` traces the centre line (ridge of the distance map, ±45° per 5 cm
+  step so it gets round U-turns and can't reverse), solves minimum curvature as bounded least squares
+  (`scipy.optimize.lsq_linear`, re-linearised; points tighter than the car's turning circle get growing
+  weight), and builds a speed profile (a_lat, accel, brake). `turing_ml/pursuit.py` follows it.
+  Settings in `configs/raceline.yaml`. TUM's optimizer was not used: its 1–3 m steps and 2020 pins
+  (numpy 1.18, casadi 3.5.1) don't fit a 56 m track or our environment.
+- **Choices, each measured on TuringTrack (sbk10, seed 0 unless stated):**
+  - pursuit uses the **rear axle** (gym pose is the CoG); look-ahead 0.4–1.0 m (`speed × 0.25 s`);
+  - speed command = **slowest** planned speed within 0.25 s ahead: brakes early without speeding up on
+    a corner exit (the plain preview point over-sped corner A by 1.1 m/s and crashed);
+  - **margin 0.20 m** (0.12 crashed at corner A: pursuit runs 0.08–0.10 m off the line through it);
+  - **a_lat 6.0** (7.0 crashed at full speed);
+  - the pursuit car **starts on the racing line** at the start line (from the centre it swerved into the
+    wall at full lock within 0.3 s);
+  - **pose prediction:** a late pose is rolled forward by its age with the current speed and yaw rate.
+- **Results:** perfect pose 18.05 / 17.77 s (2 laps). Pose late + 3 cm noise, 10 seeds:
+  0.05 s → 10/10 (18 s); 0.10 s → 8/10 full speed, 10/10 at 0.8× (22 s); 0.15 s → 0/10 full, 8/10 at 0.8×.
+  Without prediction 0.10 s → 0/10 even at 0.7×. The reactive driver: 0/10 at 3.0 and 1.5 m/s, always
+  at the bottom-left hairpin, whose centre line (0.53 m) is tighter than the car's 0.62 m turning circle.
+- **Assumptions:** race direction **ccw** (drawing doesn't say); steering lock 24° (not published). The
+  hairpin's racing line is 0.57 m at margin 0.20, below the 0.62 m circle: the car uses part of the margin.
+- **Not on the car yet:** needs localization (particle filter) delivering a pose within ~0.1 s.
 
 ---
 

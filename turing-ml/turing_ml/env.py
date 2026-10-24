@@ -29,6 +29,8 @@ GYM_FOV, GYM_BEAMS = 4.7, 1080   # gym main's fixed LiDAR (RaceCar defaults)
 GYM_ANGLE_MIN = -GYM_FOV / 2
 GYM_ANGLE_INC = GYM_FOV / (GYM_BEAMS - 1)
 LIDAR_DIST = 0.275               # f1tenth_gym_ros scan_distance_to_base_link (D-23)
+START_LINE_HALF = 1.5            # m each side of the start pose that counts as the start line (D-43)
+MIN_LAP_DIST = 5.0               # m driven before a crossing can count as a lap
 BUNDLED_MAPS = {"berlin", "skirk", "levine", "vegas"}
 
 
@@ -64,8 +66,13 @@ class TuringEnv:
                       lidar_dist=lidar_dist, seed=seed)
         if params is not None:
             kwargs["params"] = params
+        # gym main builds the collision footprint (from width, lf + lr) only for the first car in a
+        # process and keeps it at class level; force a rebuild so each env uses its own params
+        from f110_gym.envs.base_classes import RaceCar
+        RaceCar.scan_simulator = None
         self.env = gym.make("f110_gym:f110-v0", **kwargs)
         self.map_path, self.map_ext = map_path, map_ext
+        self.lidar_dist = lidar_dist
         TuringEnv._active = weakref.ref(self)
         self._stale = False
 
@@ -90,8 +97,13 @@ class TuringEnv:
         self._push()
         self._grid = np.full(len(GRID), RMAX, np.float32)
         self._scan, self._scan_seq = None, 0
-        self._collided, self._prev_laps = False, 0
+        self._collided = False
         self._lap_t0, self.lap_times = 0.0, []
+        # D-43: our own start line. gym main counts a lap whenever the car passes through a band
+        # ~4.6 m wide around the start; on a small track another part of the lap runs through it
+        self._start_xy = np.array(pose[:2], float)
+        self._start_dir = np.array([np.cos(pose[2]), np.sin(pose[2])])
+        self._along_prev, self._since_lap = 0.0, 0.0
         self._last_action = (0.0, 0.0)
 
         # warm-up: car held still until the first scan exists (D-21), max 1 s
@@ -144,10 +156,15 @@ class TuringEnv:
         self._push()
         if obs["collisions"][0]:
             self._collided = True
-        laps = int(obs["lap_counts"][0])
-        if laps > self._prev_laps:               # D-25: per-lap times from count increments
+        self._since_lap += abs(float(obs["linear_vels_x"][0])) * SIM_DT
+        rel = np.array([obs["poses_x"][0], obs["poses_y"][0]]) - self._start_xy
+        along = float(rel @ self._start_dir)
+        across = abs(float(rel[0] * -self._start_dir[1] + rel[1] * self._start_dir[0]))
+        if (self._along_prev < 0.0 <= along and across <= START_LINE_HALF
+                and self._since_lap >= MIN_LAP_DIST):    # forward over the start line (D-25, D-43)
             self.lap_times.append(self._t - self._lap_t0)
-            self._lap_t0, self._prev_laps = self._t, laps
+            self._lap_t0, self._since_lap = self._t, 0.0
+        self._along_prev = along
 
     def _push(self):
         self.sensor.push(self._t, self._obs["scans"][0], GYM_ANGLE_MIN, GYM_ANGLE_INC)

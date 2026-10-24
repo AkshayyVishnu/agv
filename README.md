@@ -9,7 +9,10 @@ race tracks and reference stacks are pinned as git submodules next to it.
 - **How to run simulations:** see [Quick start](#quick-start) and [Commands](#commands).
 - **How to test a model in a different track, sensor setup or simulator:**
   see [`docs/SIMULATION_GUIDE.md`](docs/SIMULATION_GUIDE.md).
-- **Why each design choice was made (D-01…D-41):** see [`turing-ml/docs/DECISIONS.md`](turing-ml/docs/DECISIONS.md).
+- **Our track (TuringTrack), our car (SBK10) and the pure-pursuit driver, plus how to try it on your own track/car:**
+  see [`docs/TURING_TRACK.md`](docs/TURING_TRACK.md).
+- **Car parameters and what each one does:** see [`docs/CAR_PARAMETERS.md`](docs/CAR_PARAMETERS.md).
+- **Why each design choice was made (D-01…D-46):** see [`turing-ml/docs/DECISIONS.md`](turing-ml/docs/DECISIONS.md).
 
 ---
 
@@ -20,7 +23,10 @@ race tracks and reference stacks are pinned as git submodules next to it.
 | **D500 LiDAR model.** Turns the gym's perfect scan into what the real `ldlidar` driver publishes: 10 Hz rotation with motion skew, 50–190 ms latency, range noise, dropouts, dark-wall bursts, mixed pixels, over-the-wall and pitch events, NaN = no return, angles 0…2π | `turing_ml/d500.py`, `configs/sensor.yaml` | ✅ 25 tests, checked against the gym (scan age within 5 ms of the design value) |
 | **`TuringEnv`.** Wraps `f1tenth_gym` (main) to behave like the car: 100 Hz physics, 20 Hz control, sensing only through the D500 model, one observation dict | `turing_ml/env.py` | ✅ 11 tests, ~140× real time |
 | **`to_grid`.** Any scan → 271 ranges on a 1° grid (−135°…+135°), capped at 4 m, with NaN treated as unknown | `turing_ml/sensor.py` | ✅ (placeholder for Person A's version, includes the NaN fix) |
-| **Disparity-extender driver.** Reactive, LiDAR-only. Adds scan-age (yaw) compensation, a seam rule, a safety bubble, side clearance and a stopping-distance speed cap | `turing_ml/experts.py`, `configs/expert.yaml` | ✅ **48/48 laps**: 8 tracks × {nominal, harsh} × 3 seeds, up to 3 m/s |
+| **Disparity-extender driver.** Reactive, LiDAR-only. Adds scan-age (yaw) compensation, a seam rule, a safety bubble, side clearance and a stopping-distance speed cap | `turing_ml/experts.py`, `configs/expert.yaml` | ✅ **48/48 laps** on 8 F1 tracks (stock car, before D-42..D-44); **0/10 on TuringTrack** (hairpin) |
+| **Racing line + pure pursuit.** Minimum-curvature line and speed profile built from the map; pure pursuit with late-pose prediction | `turing_ml/raceline.py`, `turing_ml/pursuit.py`, `scripts/make_raceline.py`, `configs/raceline.yaml` | ✅ TuringTrack laps in ~18 s; 10/10 with pose 0.1 s late at 0.8× speed |
+| **Vehicle presets** (`sbk10` = our Rlaarlo SBK10, default; `f1tenth_default`) | `configs/vehicle.yaml`, `turing_ml/vehicle.py` | ✅ some values estimated, see [CAR_PARAMETERS](docs/CAR_PARAMETERS.md) |
+| **TuringTrack map** from the CAD drawing | `maps/TuringTrack/`, `scripts/drawing_to_map.py` | ✅ direction assumed ccw |
 | Track loader (`f1tenth_racetracks` → map + start pose) and generated test maps (ring, corridor) | `turing_ml/tracks.py`, `turing_ml/testmaps.py` | ✅ |
 | One-command evaluation with crash diagnostics | `scripts/eval_expert.py` | ✅ |
 | Live viewer that draws the D500 points the driver actually saw | `scripts/drive_live.py` | ✅ |
@@ -32,7 +38,10 @@ race tracks and reference stacks are pinned as git submodules next to it.
 10 Hz rotating LiDAR), not from noise or speed. Rotating the scan by `yaw_rate × 0.15 s` (D-40) was the fix
 that worked best.
 
-### Evaluation results (lap time in sim seconds, seeds 0/1/2)
+### Evaluation results on F1 tracks (lap time in sim seconds, seeds 0/1/2)
+
+Run with the `f1tenth_default` car before D-42..D-44; not re-run since. TuringTrack results are in
+[`docs/TURING_TRACK.md`](docs/TURING_TRACK.md#24-results-sbk10-car-2026-10-24).
 
 | Track | Set | nominal | harsh |
 |---|---|---|---|
@@ -53,6 +62,8 @@ that worked best.
 agv/
 ├── turing-ml/                         our code (Python package turing_ml, configs, scripts, tests, docs)
 ├── docs/SIMULATION_GUIDE.md           how to test a model on other tracks / sensors / simulators
+├── docs/TURING_TRACK.md               our track + car, pure pursuit, using it on your own track
+├── docs/CAR_PARAMETERS.md             every car parameter and its effect
 │
 ├── f1tenth_gym/          (submodule)  simulator physics, main branch: the version the team runs
 ├── f1tenth_racetracks/   (submodule)  25 scaled F1 circuits (maps + centre lines)
@@ -112,7 +123,7 @@ The exact versions known to work are in [`turing-ml/requirements-sim.txt`](turin
 
 ```bash
 cd turing-ml
-python -m pytest -q                                   # expect: 57 passed
+python -m pytest -q                                   # expect: 66 passed
 python scripts/drive_live.py --map ring --no-render   # expect: laps 1 after ~14.4 s sim
 ```
 
@@ -133,6 +144,9 @@ Run everything from `turing-ml/` with the venv active.
 | Faster or slower top speed | add `--v-max 2.5` |
 | Headless, print the summary only | add `--no-render` |
 | Your own map file | `python scripts/drive_live.py --map path/to/my_map.yaml --start X Y YAW` |
+| **Our track, pure pursuit, 2 laps** | `python scripts/drive_live.py --map maps/TuringTrack/TuringTrack_map.yaml --start 0.875 -4.225 0 --driver pursuit --laps 2 --max-time 60 --realtime` |
+| Late, noisy pose (pursuit) / slower | add `--pose-delay 0.1 --pose-noise 0.03` / `--speed-scale 0.8` |
+| Other car | add `--vehicle f1tenth_default` (default `sbk10`) |
 
 In the window, **red dots** are the D500 points the driver used, drawn at the car's *current* pose. At speed
 they sit ahead of the real walls: that gap is the sensor's age. Close the window to stop and print a summary.
@@ -152,7 +166,9 @@ last 0.6 s: ranges at −90/−45/0/+45/+90°, steer, commanded and actual speed
 ### Tests and checks
 | What | Command |
 |---|---|
-| All unit tests (57) | `python -m pytest -q` |
+| All unit tests | `python -m pytest -q` |
+| Racing line + driver tests only | `python -m pytest -q tests/test_raceline.py tests/test_experts.py` |
+| Rebuild the TuringTrack racing line | `python scripts/make_raceline.py maps/TuringTrack/TuringTrack_map.yaml --start 0.875 -4.225 0` |
 | Sensor timing against the gym (scan age, seam) | `python scripts/d500_gym_smoke.py --preset nominal --speed 4` |
 
 ### Team rules for results
@@ -194,7 +210,8 @@ The full list is in [PROJECT_REPORT.md §8](turing-ml/docs/PROJECT_REPORT.md).
 
 1. Get yaw rate into the driver on the car, and model IMU noise and delay in the sim.
 2. Measure the real D500 (M-1…M-8) once the car arrives, then update `configs/sensor.yaml`.
-3. Add the real track map as soon as it's available.
+3. Localization (particle filter) delivering the pose within ~0.1 s, for pure pursuit on the car.
+   Measure the SBK10's steering lock, weight and LiDAR mount.
 4. Add start poses and a frozen train/val/test map split for evaluation.
 5. Write the ROS 2 policy node and test it in `f1tenth_gym_ros`, then on the Pi 5.
 6. Imitation learning, using the disparity extender as the teacher.

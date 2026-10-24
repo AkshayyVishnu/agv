@@ -1,0 +1,54 @@
+# Vehicle physics presets for TuringEnv (f1tenth_gym main `params`). Units: m, kg, rad, s.
+# Each preset is laid over `f1tenth_default` (the gym replaces its whole dict, so every key must exist).
+# What each value does to the race: docs/CAR_PARAMETERS.md in the repo root.
+#
+# Status tags: [spec] manufacturer/retailer figure, [meas] reviewer measurement,
+#              [est] estimate, [default] unknown, gym default kept. Replace [est]/[default] by measurements.
+vehicle:
+  presets:
+    # Generic F1TENTH car (Traxxas-based). What all results before 2026-10-24 used.
+    f1tenth_default:
+      mu: 1.0489
+      C_Sf: 4.718
+      C_Sr: 5.4562
+      lf: 0.15875
+      lr: 0.17145
+      h: 0.074
+      m: 3.74
+      I: 0.04712
+      s_min: -0.4189
+      s_max: 0.4189
+      sv_min: -3.2
+      sv_max: 3.2
+      v_switch: 7.319
+      a_max: 9.51
+      v_min: -5.0
+      v_max: 20.0
+      width: 0.31
+      length: 0.58
+      lidar_dist: 0.275   # m, LiDAR ahead of the pose point (f1tenth_gym_ros scan_distance_to_base_link)
+
+    # Our car: Rlaarlo Storm Breaker SBK10, metal version (1/10 4WD buggy), plus Pi 5 + D500 on top.
+    sbk10:
+      lf: 0.1375        # [spec] wheelbase 275 mm (BSRC measured 10.7 in = 272 mm); [est] 50/50 split
+      lr: 0.1375
+      width: 0.25       # [spec] overall width 250 mm, tyres included (BSRC measured 9.9 in)
+      length: 0.40      # [spec] 400 mm; only used for car-to-car contact and drawing
+      lidar_dist: 0.05  # [est] D500 on the top plate near the middle. NOT A SPEC: measure the mount.
+                        # The gym also centres the collision box (width x wheelbase) here, so 0.275
+                        # put the SBK10's box 0.2 m ahead of the real body (D-44)
+      m: 2.5            # [est] bare buggy ~2.0-2.2 kg + Pi 5, D500, mounts. NO reliable figure found: weigh it
+      I: 0.016          # [est] default I scaled by m * (L^2 + W^2)
+      h: 0.065          # [est] buggy CoG plus electronics on top
+      v_max: 12.5       # [meas] BSRC 28 mph on stock 3S. Also raises the gym's accel gain (10*a_max/v_max)
+      # [default] not found anywhere: steering lock, servo speed, grip, braking. Measure (CAR_PARAMETERS.md section 5)
+      s_min: -0.4189
+      s_max: 0.4189
+      sv_min: -3.2      # [est] 11 kg servo, ~0.16 s/60 deg typical, through the linkage ~3.5 rad/s at the wheels
+      sv_max: 3.2
+      mu: 1.0489
+      C_Sf: 4.718
+      C_Sr: 5.4562
+      a_max: 9.51
+      v_min: -5.0
+      v_switch: 7.319

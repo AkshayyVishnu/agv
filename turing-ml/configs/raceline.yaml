@@ -1,0 +1,24 @@
+# Racing line + pure pursuit (map-based driver). Tune here, never in code.
+# Built by scripts/make_raceline.py, driven by turing_ml/pursuit.py.
+raceline:
+  direction: ccw        # ASSUMED: the drawing doesn't say which way the race runs. cw = reverse
+  step: 0.1             # m between line points
+  margin: 0.20          # m kept between the car's side and the wall: covers pure pursuit's ~0.1 m tracking error
+  iterations: 3         # re-linearisations of the minimum-curvature solve
+  a_lat: 6.0            # m/s^2 cornering limit for the speed profile (7.0 crashed at full speed in sim)
+  a_accel: 5.0          # m/s^2
+  a_brake: 5.0          # m/s^2 (the gym can brake at 9.5; real wheels on a smooth floor can't)
+  v_max: 5.0            # m/s cap anywhere on the line
+  curv_smooth: 5        # points averaged when computing curvature (raw second differences are spiky)
+
+pursuit:
+  lookahead_min: 0.4    # m. Short: a long look-ahead cuts the inside of a hairpin (through the wall)
+  lookahead_max: 1.0    # m
+  lookahead_time: 0.25  # s: look-ahead = clip(speed * this, min, max)
+  speed_preview: 0.25   # s: command the profile speed this far ahead (the gym's speed control lags)
+  speed_scale: 1.0      # multiply the whole profile (quick way to back off)
+  predict: true         # move a late pose forward by its age using current speed + yaw rate
+  # Stand-in for a particle filter on the real car (0 = perfect pose, sim only)
+  pose_delay: 0.0       # s
+  pose_noise_xy: 0.0    # m, std per axis
+  pose_noise_yaw: 0.0   # rad, std

@@ -120,12 +120,28 @@ def inner_clearance(g, pts, cfg):
 
 
 def test_bubble_widens_the_line_past_a_tight_inside_wall():
-    """D-36: tight left bend (centre radius 2.5 m, 1.5 m wide). Without the bubble the heading
-    grazes the inner wall (~0.55 m clear); with it the car keeps ~0.75 m."""
+    """D-36: tight left bend (centre radius 2.5 m, 1.5 m wide). The bubble picks a heading that
+    keeps more room from the inner wall (~0.37 m vs ~0.30 m). Steering is uncapped here so the
+    chosen heading is compared, not steer_max. (Until D-42 this test passed only because a
+    one-beam opening made the driver go straight.)"""
     g, pts = bend(radius=2.5, width=1.5)
-    on = inner_clearance(g, pts, CFG)
-    off = inner_clearance(g, pts, dataclasses.replace(CFG, bubble_width=0.0))
-    assert on >= off + 0.1, (on, off)
+    cfg = dataclasses.replace(CFG, steer_max=1.5)
+    on = inner_clearance(g, pts, cfg)
+    off = inner_clearance(g, pts, dataclasses.replace(cfg, bubble_width=0.0))
+    assert on >= off + 0.05, (on, off)
+    assert disparity_extender(g, 2.0, cfg)[0] > 10 * DEG          # still turns into the bend
+
+
+@pytest.mark.parametrize("open_deg", [-50.0, 35.0, 50.0])
+def test_one_beam_opening_is_followed_not_ignored(open_deg):
+    """D-42: on a narrow track the farthest padded beam is often a single beam. The driver must
+    steer toward it, not fall back to straight ahead (which drove the car into the wall)."""
+    g = np.full(len(GRID), 0.6, np.float32)
+    i = int(np.argmin(np.abs(GRID - math.radians(open_deg))))
+    g[i] = 3.0
+    cfg = dataclasses.replace(CFG, bubble_width=0.0, half_width=0.0, steer_max=1.5)
+    steer, _ = disparity_extender(g, 1.0, cfg)
+    assert abs(steer - GRID[i]) <= 1.5 * DEG, (math.degrees(steer), open_deg)
 
 
 @pytest.mark.parametrize("post_deg", [-10.0, 0.0, 8.0])

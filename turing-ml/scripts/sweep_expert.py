@@ -3,11 +3,13 @@ from turing_ml import tracks, testmaps
 from turing_ml.env import TuringEnv
 from turing_ml.d500 import load_preset
 from turing_ml.experts import disparity_extender, load_expert_config
+from turing_ml.vehicle import load_vehicle, vehicle_lidar_dist
+VEHICLE = load_vehicle("configs/vehicle.yaml", "sbk10")
 def run(m, cfg, preset, seed=0):
     if m=="ring":
         p,(cx,cy)=testmaps.ring(); start=(cx,cy-5,0.0)
     else: p,start=tracks.racetrack(m)
-    env=TuringEnv(p, sensor_cfg=load_preset("configs/sensor.yaml",preset), max_laps=1, max_time=400, seed=seed)
+    env=TuringEnv(p, sensor_cfg=load_preset("configs/sensor.yaml",preset), params=VEHICLE, lidar_dist=vehicle_lidar_dist("configs/vehicle.yaml", "sbk10"), max_laps=1, max_time=400, seed=seed)
     obs=env.reset(start, seed=seed); still=0
     while not(obs["done"] or obs["truncated"]):
         obs=env.step(disparity_extender(obs["grid"],obs["speed"],cfg,obs["yaw_rate"]))

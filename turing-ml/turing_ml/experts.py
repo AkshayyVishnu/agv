@@ -89,12 +89,14 @@ def disparity_extender(grid: np.ndarray, speed_now: float = 0.0,
 
     cand =np.where(np.abs(GRID) <= math.radians(c.fov_deg), ext, -1.0)
     ok = cand >= cand.max() - 0.1                      # many beams tie at the 4 m cap
-    best, start = (ZERO, ZERO), None
+    best, start = None, None
     for i, v in enumerate(np.append(ok, False)):       # centre of the widest near-max run
         if v and start is None:
             start = i
         if not v and start is not None:
-            if i - 1 - start > best[1] - best[0]:
+            # a one-beam run counts too: on a narrow track the opening is often a single beam,
+            # and falling back to straight ahead drove the car into the wall (D-42)
+            if best is None or i - 1 - start > best[1] - best[0]:
                 best = (start, i - 1)
             start = None
     steer = float(np.clip(GRID[(best[0] + best[1]) // 2], -c.steer_max, c.steer_max))
