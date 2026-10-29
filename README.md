@@ -7,6 +7,7 @@ race tracks and reference stacks are pinned as git submodules next to it.
 - **What's implemented:** see the [list below](#whats-implemented). For the full write-up see
   [`turing-ml/docs/PROJECT_REPORT.md`](turing-ml/docs/PROJECT_REPORT.md).
 - **How to run simulations:** see [Quick start](#quick-start) and [Commands](#commands).
+- **Putting the driver on the car (ROS 2 interfaces, what is assumed/unfilled):** see [`docs/CAR_INTEGRATION.md`](docs/CAR_INTEGRATION.md).
 - **How to test a model in a different track, sensor setup or simulator:**
   see [`docs/SIMULATION_GUIDE.md`](docs/SIMULATION_GUIDE.md).
 - **Our track (TuringTrack), our car (SBK10) and the pure-pursuit driver, plus how to try it on your own track/car:**
