@@ -1,0 +1,10 @@
+[INFO] [1793340179.887682321] [slam_toolbox]: Node using stack size 40000000
+[INFO] [1793340179.925821832] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[INFO] [1793340179.927008055] [slam_toolbox]: CeresSolver: Using SCHUR_JACOBI preconditioner.
+[WARN] [1793340183.482407906] [tf2_buffer]: Detected jump back in time. Clearing TF buffer.
+[WARN] [1793340183.768728433] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.2 m)
+Registering sensor: [Custom Described Lidar]
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+W1030 06:05:14.710716    58 preprocessor.cc:62] Specified options.num_threads: 50 exceeds maximum available from the threading model Ceres was compiled with: 8.  Bounding to maximum number available.
+W1030 06:07:47.543394    58 preprocessor.cc:62] Specified options.num_threads: 50 exceeds maximum available from the threading model Ceres was compiled with: 8.  Bounding to maximum number available.
+W1030 06:09:34.372992    58 preprocessor.cc:62] Specified options.num_threads: 50 exceeds maximum available from the threading model Ceres was compiled with: 8.  Bounding to maximum number available.

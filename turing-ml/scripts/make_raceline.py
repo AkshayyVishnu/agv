@@ -52,6 +52,10 @@ def main():
                     help="a pose on the start line, facing the ccw direction")
     ap.add_argument("--vehicle", default="sbk10")
     ap.add_argument("--config", default=str(ROOT / "configs" / "raceline.yaml"))
+    ap.add_argument("--centre", help="CSV (x, y) of one driven lap to use as the centre line instead of "
+                                     "tracing the map (a lidar map with open areas can mislead the trace)")
+    ap.add_argument("--no-optimise", action="store_true",
+                    help="drive the centre line itself (e.g. a lap the reactive driver proved), no minimum-curvature line")
     a = ap.parse_args()
 
     cfg = rl.load_raceline_config(a.config)
@@ -61,7 +65,11 @@ def main():
         start[2] += math.pi
     track = rl.load_map(a.map)
 
-    centre = rl.trace_centreline(track, start)
+    if a.centre:
+        lap = np.loadtxt(a.centre, delimiter=",", comments="#")[:, :2]
+        centre = rl.resample_closed(rl._smooth_closed(rl.resample_closed(lap, 0.05), 9), 0.1)
+    else:
+        centre = rl.trace_centreline(track, start)
     gap = float(np.hypot(*(centre[0] - start[:2])))
     w = track.clearance(centre)
     print(f"centre line: {len(centre)} pts, {len(centre) * 0.1:.1f} m long, starts {gap:.2f} m from the start pose, "
@@ -69,7 +77,10 @@ def main():
 
     half_car = car["width"] / 2
     r_car = (car["lf"] + car["lr"]) / math.tan(car["s_max"])
-    line = rl.min_curvature(track, centre, half_car, cfg["margin"], cfg["iterations"], cfg["step"], r_min=r_car)
+    if a.no_optimise:
+        line = rl.resample_closed(centre, cfg["step"])
+    else:
+        line = rl.min_curvature(track, centre, half_car, cfg["margin"], cfg["iterations"], cfg["step"], r_min=r_car)
     i0 = rl.start_index(dict(x=line[:, 0], y=line[:, 1]), start)
     line = np.roll(line, -i0, 0)                                      # start at the start line
     prof = rl.speed_profile(line, cfg["a_lat"], cfg["a_accel"], cfg["a_brake"], cfg["v_max"], cfg["curv_smooth"])

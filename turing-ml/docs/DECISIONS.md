@@ -527,6 +527,24 @@ applies. It starts from the manual's extender. Every change from the manual is l
 - **Reopen if:** it needs to be robust rather than tuned: the working bubble range is only ~0.3–0.45 m.
   Next step: a full-lock-arc check against the scan that steers wide before a sharp opening.
 
+### D-48 · Measured SBK10 steering, wheelbase and LiDAR mount; yaw inertia 0.046 (sim was blowing up)
+- **What:** `vehicle.yaml` sbk10: wheelbase 0.28 (`lf = lr = 0.14`), `s_max` ±0.506 rad, `lidar_dist` 0.085,
+  `I` 0.046. Team sheet kept as `configs/car_spec.yaml` with the measurements.
+- **Steering (2026-10-30):** servo on GPIO12 hardware PWM (Pi 5 `dtoverlay=pwm,pin=12,func=4`), commanded
+  from the Pi. Centre 1550 µs, full left 2100 µs, full right 1050 µs (servo strains at 1000). Full-lock
+  circle of the rear axle centre: left D 0.98 m → atan(0.28/0.49) = 0.519 rad, right D 1.01 m → 0.506 rad.
+  The sheet's 0.698 rad / 0.40 m were not confirmed (0.698 is roughly the Ackermann inner wheel, ~36°).
+- **Inertia:** the old estimate 0.016 (gym default scaled) made gym main's single-track model unstable at
+  100 Hz just above its 0.5 m/s kinematic switch: yaw rate grew to 1e50 while the car stood still, so every
+  run slower than ~1 m/s crashed (pure pursuit at 0.2× speed and the reactive driver at `v_max` 1.0: 0/10).
+  0.03 and 0.047 at 0.01 s, or 0.016 at 0.002 s, are stable (78 s lap). 0.046 = uniform box m(L²+W²)/12.
+- **Results (TuringTrack, sbk10, 1 m/s cap):** pure pursuit `--speed-scale 0.2`, pose 0.1 s late + 3 cm:
+  10/10, 78 s. Reactive D-47 + `steer_max=0.5 v_max=1.0`: 10/10, 96 s. At higher speed: reactive
+  `steer_max=0.5` v_max 3: 10/10, 49 s; pure pursuit 0.8× with late pose 10/10, 21 s; full planned speed now
+  fails (perfect pose crashes at 13 s with the larger inertia): re-tune `a_lat` before raising the cap.
+- **Reopen if:** the real car's yaw inertia is measured (swing test), or runs need the 0.4–0.6 m/s band with
+  a smaller `I` (then shorten `SIM_DT` and re-check the D500 model timing).
+
 ---
 
 ## Needs measurement on the car (owner: B + Aayush, after Oct 20)

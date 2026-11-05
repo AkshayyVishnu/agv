@@ -13,7 +13,7 @@ race tracks and reference stacks are pinned as git submodules next to it.
 - **Our track (TuringTrack), our car (SBK10) and the pure-pursuit driver, plus how to try it on your own track/car:**
   see [`docs/TURING_TRACK.md`](docs/TURING_TRACK.md).
 - **Car parameters and what each one does:** see [`docs/CAR_PARAMETERS.md`](docs/CAR_PARAMETERS.md).
-- **Why each design choice was made (D-01…D-47):** see [`turing-ml/docs/DECISIONS.md`](turing-ml/docs/DECISIONS.md).
+- **Why each design choice was made (D-01…D-48):** see [`turing-ml/docs/DECISIONS.md`](turing-ml/docs/DECISIONS.md).
 
 ---
 

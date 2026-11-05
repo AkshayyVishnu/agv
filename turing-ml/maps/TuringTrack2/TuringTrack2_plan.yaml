@@ -1,0 +1,35 @@
+# TuringTrack2: the new track, from the team's pencil sketch with approximate dimensions (2026-10-30).
+# Built by scripts/plan_to_map.py. Metres; x to the right of the sketch, y up the sketch.
+# Origin (0, 0) = bottom-left corner of the track. The sketch is not to scale: positions honour
+# its numbers (corridor widths), and lengths the sketch doesn't give are ASSUMED from its proportions.
+# Replace with the lidar map once the track is mapped.
+#
+# Layout: one loop around a hook-shaped wall. Bottom straight under the black box -> up the right
+# side -> left along the 2 m wide top -> round the big left curve -> past the free end of the hook
+# -> right through the pocket under the hook -> sharp right down past the box -> bottom straight.
+
+resolution: 0.05
+wall_thickness: 0.05      # ASSUMED thin boards
+start: [1.8, 0.7, 0.0]    # bottom straight, facing +x (counter-clockwise). ASSUMED: sketch has no start line
+
+walls:
+  # outer boundary
+  - line: [[0.0, 2.4], [0.0, 0.0], [3.75, 0.0], [3.75, 6.9], [0.0, 6.9]]   # left of bottom, bottom, right, top
+  - arc: {centre: [0.0, 4.65], radii: [2.6, 2.25], deg: [90, 270]}        # big left curve, top wall to (0, 2.4)
+  - arc: {centre: [1.27, 2.4], radii: [1.27, 1.55], deg: [180, 90]}       # left wall curving up and right to its free end (1.27, 3.95)
+  # inner hook: vertical wall, top wall, curved tail with a free end
+  - line: [[2.3, 2.3], [2.3, 4.9], [0.5, 4.9]]
+  - arc: {centre: [0.5, 4.1], radii: [1.8, 0.8], deg: [90, 205]}          # tail; free end near (-1.13, 3.76)
+  - box: [1.3, 1.4, 2.3, 2.3]                                             # the black box
+
+checks:                   # sketch number -> where it is measured
+  - {name: "bottom, box to bottom wall", at: [1.8, 0.7], sketch: 1.4}
+  - {name: "right of box", at: [3.0, 1.85], sketch: 1.46}
+  - {name: "right side above box", at: [3.0, 3.6], sketch: 1.4}
+  - {name: "top", at: [1.4, 5.9], sketch: 2.0}
+  - {name: "left curve", at: [-1.95, 4.4], sketch: 1.2}
+  - {name: "hook end to left wall curve", at: [-0.5, 3.6], sketch: 1.39}
+  - {name: "pocket under the hook (height)", at: [1.27, 4.45], sketch: 0.9}
+  - {name: "pocket, wall end to inner wall", at: [1.8, 4.0], sketch: 1.03}
+  - {name: "next to the box (narrowest)", at: [0.7, 2.6], sketch: 0.55}
+  - {name: "left of box", at: [0.65, 1.85], sketch: 1.3}

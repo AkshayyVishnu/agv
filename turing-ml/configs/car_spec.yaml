@@ -1,0 +1,102 @@
+# Vehicle and sensor parameters: Rlaarlo SBK10 car with LDROBOT D500 LiDAR
+# Values marked null are still to be measured on our own car.
+# Published figures come from retailer listings and reviews, not measurements.
+# Conventions: angle 0 is straight ahead, positive angles and positive steering
+# turn left, positive speed is forward.
+#
+# Team reference sheet (received 2026-10-30). The simulator reads configs/vehicle.yaml (preset sbk10),
+# which takes its values from here. "# CHECK:" comments were added on review; "# measured 2026-10-30"
+# values were read from the real D500 on the Pi (ldlidar_stl_ros2, LD19 mode, ~60 scans).
+
+vehicle:
+  model: Rlaarlo SBK10 Storm Breaker
+  edition: metal RTR               # the metal edition (the cheaper of the two)
+  scale: 1/10
+  drive: 4WD
+  differentials: 3
+  wheelbase_m: 0.28                 # measured on our car 2026-10-30 (about); 0.275 is published for the Carbon edition
+  length_m: 0.4
+  width_m: 0.25
+  front_track_m: 0.20               # measured 2026-10-30, centre to centre of the front tyres (about)
+  mass_kg: null                    # with Raspberry Pi, LiDAR and battery fitted
+  tyre_diameter_m: 0.082
+  max_steering_angle_rad: 0.506    # measured 2026-10-30 (Method A): effective (bicycle-model) angle, smaller side.
+                                   # Left: rear-axle-centre circle D 0.98 m -> R 0.49 -> atan(0.28/0.49) = 0.519 rad.
+                                   # Right: D 1.01 m -> R 0.505 -> 0.506 rad. Ackermann wheel angles at full lock:
+                                   # inner ~0.62 rad (36 deg), outer ~0.44 rad (25 deg). (Sheet said 0.698 / 0.40 m.)
+  min_turning_radius_m: 0.505      # measured, rear axle centre, worst side (left 0.49)
+  steering_servo_pwm_us:           # measured 2026-10-30, servo signal on GPIO12 (hardware PWM0 channel 0), 50 Hz
+    centre: 1550                   # wheels straight
+    full_left: 2100                # +0.519 rad; mechanical stop between 2100 and 2150
+    full_right: 1050               # -0.506 rad; servo strains at 1000
+    # higher pulse = left. Between the ends assume linear (not yet checked at 25/50/75 %):
+    # left  +0.519 rad / 550 us = 0.000944 rad/us; right -0.506 rad / 500 us = 0.001012 rad/us
+  motor:
+    size: 2852                     # published for the metal/standard edition; the motor is driven by our VESC
+    kv: 3100                       # published; confirm from the motor label
+  steering_type: Ackermann        # confirmed 2026-10-30: inner front wheel turns more than the outer
+  steering_servo_kg: 11            # published stock servo; confirm it is unchanged, since steering uses a separate driver
+  battery:
+    chemistry: LiPo
+    cells: 3                       # CHECK: measured 15.21 V on 2026-10-30, impossible for 3S (12.6 V max).
+                                   # 15.21 V / 4 = 3.80 V per cell: this is a 4S pack (14.8 V nominal matches 4S).
+                                   # Confirm on the pack label ("4S") or the balance plug (5 wires = 4S, 4 = 3S)
+    nominal_voltage_v: 14.8        # 4S: 14.8 V nominal, 16.8 V full; keep above 3.5 V/cell under load (14.0 V)
+    capacity_mah: 5200
+    c_rating: 35
+    voltage_resting_v: 15.21       # measured 2026-10-30, not driving (3.80 V/cell if 4S: about half charged)
+    voltage_while_running_v: null  # range seen during runs
+
+actuation:
+  drive: VESC, commanded from a Raspberry Pi 5
+  steering: separate PWM servo driver, commanded from the Raspberry Pi 5
+  steer_command: angle in radians
+  speed_command: metres per second
+  speed_cap_first_tests_mps: 1.0   # decided 2026-10-30; raised in steps later
+  acceleration_limit_mps2: null
+  braking_limit_mps2: null
+  steering_lag_s: null
+
+lidar:
+  model: LDROBOT D500 (STL-19P sensor)
+  fov_deg: 360
+  range_min_m: 0.03                # driver reports range_min 0.02
+  range_max_m: 12                  # at 80 percent target reflectivity; driver reports range_max 25, longest valid seen 11.7
+  scan_rate_hz: 10.0               # measured 2026-10-30: 10.00 Hz, scans 100 ms apart
+  samples_per_second: 5000
+  beams_per_scan: 503              # measured 2026-10-30: 502-505 per scan, 0.717 deg apart
+  angle_range_rad: [0.0, 6.2832]   # measured 2026-10-30: angle_min 0, angle_max 2*pi
+  zero_direction: null             # where angle zero points relative to car forward. TODO box test
+  rotation_direction: counter-clockwise  # measured 2026-10-30 as published (driver laser_scan_dir: true): angles increase to the left
+  mount:
+    x_forward_of_rear_axle_m: 0.225  # measured 2026-10-30
+    y_left_of_centre_m: null         # assumed 0 (on the centre line): confirm
+    z_height_m: 0.13                 # measured 2026-10-30, above the ground. The LD19 launch still publishes
+                                     # base_link -> laser at x 0, z 0.18: update it to x 0.225 (see CAR_INTEGRATION.md)
+    yaw_rad: null
+  no_return_reading: nan           # measured 2026-10-30: NaN (18-27 % of beams indoors), never 0 or inf
+  timestamp: publish time          # measured 2026-10-30: stamp = when the scan is sent (age at arrival 0 ms),
+                                   # not when the beams were measured; true scan age can't be read from it
+  self_returns: 0.04-0.10 m at 150-180 deg   # measured 2026-10-30: probably the car's own body behind the LiDAR
+  range_noise_std_m: null
+  beam_dropout_fraction: null
+
+speed_signal:
+  source: VESC motor speed (electrical RPM)
+  conversion: calibrated gain, not derived from motor data
+  erpm_per_metre_per_second: null
+  rate_hz: null
+  lag_s: null
+  noise_std_mps: null
+
+timing:
+  decision_rate_hz: 10             # decided: one fresh scan per decision
+  command_republish_hz: 20         # the gate repeats the last command
+  stop_timeout_s: 0.3              # no command for this long stops the car
+  # CHECK: the topic contract (turing-track-ros2) says the watchdog stops after 200 ms; agree on one value
+  total_delay_s: null              # scan to wheel response, to be measured
+
+compute:
+  board: Raspberry Pi 5
+  runtime: ONNX Runtime, CPU only
+  ros: ROS 2 Humble in Docker

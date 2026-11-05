@@ -1,6 +1,7 @@
 # Putting the driver on the car: interfaces, assumptions, open items
 
-Status 2026-10-30. **Nothing in this file has run on the real car yet.** Everything here was tested in
+Status 2026-10-30. **No driver has run on the real car yet.** The D500 has been read on the Pi (values in §5 and
+`turing-ml/configs/car_spec.yaml`, the team's car sheet). Everything here was tested in
 simulation only (`f1tenth_gym`, TuringTrack 1.0 m wide). The ROS 2 node in §4 is a sketch to build from,
 not tested code.
 
@@ -235,36 +236,36 @@ and `PurePursuit(load_raceline(csv), pursuit_cfg, load_vehicle(...))`.
 
 | # | Item | Current value | Status | If wrong |
 |---|---|---|---|---|
-| C-1 | Steering lock (max angle) | ±0.419 rad (24°), driver caps 0.4 | assumed (gym default) | **Biggest one.** Sets the turning circle (0.62 m). Smaller lock: hairpins fail, the racing line is too tight. Larger: margin unused. Measure a full-lock circle each way: `s_max = atan(0.275 / R)` |
+| C-1 | Steering lock (max angle) | **±0.506 rad (29°) measured** 2026-10-30: full-lock circle of the rear axle centre, left D 0.98 m (0.519 rad), right D 1.01 m (0.506); smaller side used | measured | sim, racing line and driver caps updated. Reactive driver at `steer_max=0.5`: 10/10 on TuringTrack at 1 m/s (96 s) and at 3 m/s (49 s) |
 | C-2 | Steering left/right symmetry, centre trim | symmetric, 0 | assumed | car pulls to one side; pure pursuit fights it constantly |
 | C-3 | Servo speed | 3.2 rad/s | assumed | slower servo = turns in late = runs wide in quick bends |
-| C-4 | LiDAR mount position (ahead of CoG) | 0.05 m | assumed (D-44) | sim collision box in the wrong place; on the car, the `base_link→laser` TF wrong means localization and the map are offset |
-| C-5 | LiDAR mount height | – | **UNFILLED** | walls lower than the scan plane are invisible |
-| C-6 | Mass | 2.5 kg | assumed | braking distance and grip in sim; small effect at our speeds |
-| C-7 | Weight split front/rear (`lf`/`lr`) | 50/50 | assumed | pursuit's rear-axle shift; mild handling change |
-| C-8 | Inertia, CoG height | 0.016, 0.065 m | assumed | sim handling detail only |
+| C-4 | LiDAR mount | **0.225 m ahead of the rear axle, 0.13 m high** (measured 2026-10-30); sim `lidar_dist` 0.085 | measured | the LD19 launch's `base_link → laser` (0, 0, 0.18) must become (0.225, 0, 0.13) |
+| C-5 | LiDAR mount height | **0.13 m** | measured | walls must be taller than ~0.15 m; when braking the scan can hit the floor (3° pitch: ~2.5 m ahead) |
+| C-6 | Mass | 2.5 kg | assumed | the 3S 5200 mAh pack (team sheet) is heavier than stock; weigh the car with everything fitted. Braking distance and grip in sim |
+| C-7 | Weight split front/rear (`lf`/`lr`) | 50/50 of the measured 0.28 m wheelbase | assumed | pursuit's rear-axle shift; mild handling change |
+| C-8 | Yaw inertia, CoG height | 0.046 (box estimate), 0.065 m | assumed | **`I` below ~0.03 makes the simulator blow up just above 0.5 m/s** (was 0.016 until 2026-10-30): keep ≥ 0.03 or shorten the physics step |
 | C-9 | Tyre grip on the race floor | gym default (μ ≈ 1.05) | **UNFILLED** | **Second biggest.** `a_lat` 6.0 m/s² assumes good grip. On a dusty or smooth floor the car slides wide in bends at the planned speeds. Start `a_lat` 3–4 |
 | C-10 | Braking deceleration | 5 m/s² planned | assumed | late braking: overshoots corner entries |
 | C-11 | Top speed | 12.5 m/s gym, line capped 5 m/s, gate 1.5 m/s | measured (28 mph) | none at current caps |
-| C-12 | Wheel diameter under load | 83 mm | spec | speed from RPM off by the same %: braking cap and pose prediction off |
-| C-13 | Gear ratio motor → wheel | – | **UNFILLED** (needed if RPM is motor RPM) | speed wrong by the ratio: everything speed-based fails |
+| C-12 | Wheel diameter under load | 82 mm | team sheet | speed from RPM off by the same %: braking cap and pose prediction off |
+| C-13 | Gear ratio motor → wheel | not needed | team sheet: speed = calibrated gain on VESC ERPM | the gain (`erpm_per_metre_per_second`) is **UNFILLED**: calibrate by driving a measured distance |
 
 ### 5.2 Sensors and actuation
 
 | # | Item | Current value | Status | If wrong |
 |---|---|---|---|---|
-| S-1 | Scan angle direction / zero | CCW, 0 = forward | assumed | **mirrored scan: the car steers into walls immediately**. Bring-up step 2 catches it |
-| S-2 | Scan timestamp meaning | start of rotation | assumed | scan-age compensation off by up to 0.1 s: the car cuts or runs wide in bends |
+| S-1 | Scan angle direction / zero | **direction measured: counter-clockwise, 0…2π, 503 beams** (2026-10-30); zero direction **UNFILLED** | measured / box test pending | mirrored or rotated scan: the car steers into walls. Box test: object 1 m ahead must show at 0° |
+| S-2 | Scan timestamp meaning | **measured: publish time** (age at arrival 0 ms) | measured | true scan age unknown from the stamp: the reactive driver's `yaw_comp_dt` 0.15 s can't be checked this way; needs a moving test |
 | S-3 | Scan latency | 50–190 ms modelled | assumed (sensor model) | the reactive driver's `yaw_comp_dt` 0.15 s is tuned to it |
-| S-4 | "No return" encoding | NaN | assumed | if the driver gives 0, open space looks like a wall at 0 m: the car stops. `to_grid` treats `< range_min` as unknown, so 0 is safe only if `range_min > 0` |
+| S-4 | "No return" encoding | **measured: NaN** (18–27 % of beams indoors), never 0/inf | measured | `to_grid` treats NaN as unknown: tested on live scans |
 | S-5 | Dark/black wall returns | dropouts modelled | assumed | black walls can vanish: the reactive driver sees an opening that isn't there |
-| S-6 | Speed source (RPM) | – | **UNFILLED** | the stock 45 A ESC has no speed output. No speed means no braking cap, no prediction, no speed control |
+| S-6 | Speed source (RPM) | **VESC electrical RPM** (team sheet) | team sheet | gain, rate and lag still **UNFILLED** |
 | S-7 | Speed sign (reverse) | – | **UNFILLED** | unsigned speed breaks odometry when reversing |
 | S-8 | Speed resolution at low speed | – | **UNFILLED** | reads 0 below some speed: the stuck detection and slow starts misbehave |
 | S-9 | Yaw: rate or heading? | rate | assumed | integrated heading passed as rate: compensation goes wildly wrong |
 | S-10 | IMU units and axes | rad/s, z up | assumed | deg/s = 57× too big; z down = sign flipped. Bring-up step 4 |
-| S-11 | m/s → throttle (speed controller) | – | **UNFILLED** | without it `drive.speed` has no meaning: the car's speed depends on the battery voltage |
-| S-12 | Steering PWM ↔ angle calibration | – | **UNFILLED** | commanded 0.2 rad gives some other angle: pursuit overshoots or undershoots every bend |
+| S-11 | m/s → throttle (speed controller) | **VESC speed control** (team sheet: speed command in m/s) | team sheet | tune the VESC speed loop; if it's slow the gym's speed model is optimistic |
+| S-12 | Steering PWM ↔ angle calibration | **measured 2026-10-30:** GPIO12 hardware PWM, 50 Hz; centre 1550 µs, full left 2100 µs (+0.519 rad), full right 1050 µs (−0.506 rad); higher = left. In between assumed linear | measured ends, middle unchecked | check 25/50/75 % circles; the steering driver must clamp to 1050–2100 µs (servo strains at 1000) |
 | S-13 | ESC reverse/brake behaviour | – | **UNFILLED** | many hobby ESCs need brake → neutral → reverse; commands to slow down may brake, coast, or do nothing |
 
 ### 5.3 System and track
@@ -273,7 +274,7 @@ and `PurePursuit(load_raceline(csv), pursuit_cfg, load_vehicle(...))`.
 |---|---|---|---|---|
 | X-1 | `base_link` = rear axle | rear axle | assumed (contract ambiguous) | pursuit shifts the pose twice or not at all: 0.14 m systematic error, cuts corners |
 | X-2 | Localization pose age | ≤ 0.1 s | assumed (sim requirement) | 0.15 s: 0/10 at full speed in sim. Measure it on the Pi |
-| X-3 | ROS 2 distro on the Pi 5 | Humble (contract) | **UNFILLED** | Humble needs Ubuntu 22.04, which doesn't officially support the Pi 5: Docker, or Jazzy on 24.04 |
+| X-3 | ROS 2 distro on the Pi 5 | **Humble in Docker** on Debian 13 (checked on the Pi 2026-10-30) | measured | – |
 | X-4 | One clock for all nodes | yes | assumed | pose age and scan age computed wrong |
 | X-5 | Scan → command latency | ≤ 100 ms target | **UNFILLED** | more latency = slower safe speed |
 | X-6 | Pi 5 CPU headroom (SLAM + PF + driver) | – | **UNFILLED** | dropped scans, late poses |
